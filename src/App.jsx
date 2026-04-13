@@ -171,10 +171,7 @@ export default function App() {
     };
 
     const selectRole = async (role) => {
-        if (!user) {
-            alert("Подождите, идет авторизация в Telegram...");
-            return;
-        }
+        if (!user) return;
         
         if (!role) {
             setUserRole(null);
@@ -194,11 +191,10 @@ export default function App() {
             setCurrentScreen(role === 'customer' ? 'customer-home' : role + '-dashboard');
             seedProducts();
         } catch (err) {
-            console.error("Role selection error:", err);
-            // Если ошибка в базе, всё равно пускаем пользователя дальше (демо-режим)
+            console.error("Firebase update failed:", err);
+            // Плавный переход даже при ошибке связи с БД
             setUserRole(role);
             setCurrentScreen(role === 'customer' ? 'customer-home' : role + '-dashboard');
-            alert("Ошибка базы данных: " + err.message + ". Работаем в демо-режиме.");
         }
     };
 
