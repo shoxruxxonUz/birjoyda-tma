@@ -27,11 +27,20 @@ const firebaseConfig = typeof __firebase_config !== 'undefined'
         appId: "APP_ID"
     };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'delivery-app-v6';
+let app, auth, db;
+const isFirebaseValid = firebaseConfig && firebaseConfig.apiKey && firebaseConfig.apiKey !== "ВАШ_API_KEY";
 
+try {
+    if (isFirebaseValid) {
+        app = initializeApp(firebaseConfig);
+        auth = getAuth(app);
+        db = getFirestore(app);
+    }
+} catch (e) {
+    console.error("Firebase initialization failed", e);
+}
+
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'delivery-app-v6';
 const tg = window.Telegram?.WebApp;
 
 // --- Константы ---
@@ -118,6 +127,10 @@ export default function App() {
 
     // Авторизация
     useEffect(() => {
+        if (!auth) {
+            setLoading(false);
+            return;
+        }
         const initAuth = async () => {
             try {
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -136,6 +149,7 @@ export default function App() {
     }, []);
 
     const loadUserProfile = async (uid) => {
+        if (!db) return;
         const userDoc = await getDoc(doc(db, 'artifacts', appId, 'users', uid, 'profile', 'info'));
         if (userDoc.exists()) {
             const data = userDoc.data();
@@ -146,6 +160,7 @@ export default function App() {
     };
 
     const seedProducts = async () => {
+        if (!db) return;
         const productsRef = collection(db, 'artifacts', appId, 'public', 'data', 'products');
         const snapshot = await getDocs(productsRef);
         if (snapshot.empty) {
@@ -162,14 +177,16 @@ export default function App() {
             setCurrentScreen('role-selection');
             return;
         }
-        await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'info'), { role, uid: user.uid });
+        if (db) {
+            await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'info'), { role, uid: user.uid });
+        }
         setUserRole(role);
         setCurrentScreen(role === 'customer' ? 'customer-home' : role + '-dashboard');
         seedProducts();
     };
 
     useEffect(() => {
-        if (!user || !userRole) return;
+        if (!user || !userRole || !db) return;
         const unsubOrders = onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), (snapshot) => {
             setActiveOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         });
@@ -203,14 +220,21 @@ export default function App() {
             createdAt: Date.now(),
             address: 'ул. Шахрисабз, 25',
         };
-        const docRef = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), orderData);
+        if (db) {
+            const docRef = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), orderData);
+            setTrackingOrder({ id: docRef.id, ...orderData });
+        } else {
+            // Фейковый ID для демо-режима
+            setTrackingOrder({ id: 'demo-' + Date.now(), ...orderData });
+        }
         setCart([]);
-        setTrackingOrder({ id: docRef.id, ...orderData });
         setCurrentScreen('order-success');
     };
 
     const updateOrderStatus = async (orderId, nextStatus, extra = {}) => {
-        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId), { status: nextStatus, ...extra });
+        if (db) {
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'orders', orderId), { status: nextStatus, ...extra });
+        }
     };
 
     if (loading) return <div className="h-screen flex items-center justify-center bg-white"><div className="w-10 h-10 border-4 border-[#FCE000] border-t-transparent rounded-full animate-spin" /></div>;

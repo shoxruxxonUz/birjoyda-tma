@@ -1,7 +1,7 @@
 import { Telegraf, Markup } from 'telegraf';
 
 const TOKEN = '8716182290:AAGv27iz8Ua1sCrKSS_0_qne9-xTUtlQO2M'; // Ваш токен
-const URL = 'ВАШ_URL_ХОСТИНГА'; // Сюда нужно будет вставить URL после деплоя (например, на Vercel)
+const URL = 'https://birjoyda-tma.vercel.app/'; // Ваш URL хостинга
 
 const bot = new Telegraf(TOKEN);
 
