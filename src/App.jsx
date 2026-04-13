@@ -19,12 +19,12 @@ import {
 const firebaseConfig = typeof __firebase_config !== 'undefined'
     ? JSON.parse(__firebase_config)
     : {
-        apiKey: "ВАШ_API_KEY",
-        authDomain: "PROJECT_ID.firebaseapp.com",
-        projectId: "PROJECT_ID",
-        storageBucket: "PROJECT_ID.appspot.com",
-        messagingSenderId: "SENDER_ID",
-        appId: "APP_ID"
+        apiKey: "AIzaSyC1pF2iqJjlVIlxBCXic8_aiaVScGYodQU",
+        authDomain: "birjoyda-1db24.firebaseapp.com",
+        projectId: "birjoyda-1db24",
+        storageBucket: "birjoyda-1db24.firebasestorage.app",
+        messagingSenderId: "792856004348",
+        appId: "1:792856004348:web:ba626a8521d5d73811f979"
     };
 
 let app, auth, db;
