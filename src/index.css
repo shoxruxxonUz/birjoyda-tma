@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+:root {
+  --primary-color: #FCE000;
+  --bg-color: #ffffff;
+  --text-color: #000000;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Стили для Telegram Mini App */
+* {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
