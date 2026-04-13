@@ -171,18 +171,35 @@ export default function App() {
     };
 
     const selectRole = async (role) => {
-        if (!user) return;
+        if (!user) {
+            alert("Подождите, идет авторизация в Telegram...");
+            return;
+        }
+        
         if (!role) {
             setUserRole(null);
             setCurrentScreen('role-selection');
             return;
         }
-        if (db) {
-            await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'info'), { role, uid: user.uid });
+
+        try {
+            if (db) {
+                await setDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'profile', 'info'), { 
+                    role, 
+                    uid: user.uid,
+                    lastActive: Date.now()
+                });
+            }
+            setUserRole(role);
+            setCurrentScreen(role === 'customer' ? 'customer-home' : role + '-dashboard');
+            seedProducts();
+        } catch (err) {
+            console.error("Role selection error:", err);
+            // Если ошибка в базе, всё равно пускаем пользователя дальше (демо-режим)
+            setUserRole(role);
+            setCurrentScreen(role === 'customer' ? 'customer-home' : role + '-dashboard');
+            alert("Ошибка базы данных: " + err.message + ". Работаем в демо-режиме.");
         }
-        setUserRole(role);
-        setCurrentScreen(role === 'customer' ? 'customer-home' : role + '-dashboard');
-        seedProducts();
     };
 
     useEffect(() => {
