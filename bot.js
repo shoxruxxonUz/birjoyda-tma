@@ -1,5 +1,6 @@
 import { Telegraf, Markup } from 'telegraf';
 import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, query, where, updateDoc, doc } from 'firebase/firestore';
 
 const TOKEN = '8716182290:AAGv27iz8Ua1sCrKSS_0_qne9-xTUtlQO2M'; // Ваш токен
@@ -19,6 +20,8 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+signInAnonymously(auth).catch(console.error);
 const appId = 'delivery-app-v6';
 
 const bot = new Telegraf(TOKEN);

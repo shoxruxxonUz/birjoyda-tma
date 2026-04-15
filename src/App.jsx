@@ -6,6 +6,7 @@ import {
     Bell, Map as MapIcon, Phone, Check, CreditCard, Heart, MapPinned
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 import {
     getFirestore, collection, doc, setDoc, onSnapshot,
     updateDoc, query, where, addDoc, getDocs
@@ -21,10 +22,12 @@ const firebaseConfig = {
     appId: "1:792856004348:web:ba626a8521d5d73811f979"
 };
 
-let app, db;
+let app, db, auth;
 try {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
+    auth = getAuth(app);
+    signInAnonymously(auth).catch(e => console.error(e));
 } catch (e) {
     console.error("Firebase initialization failed", e);
 }
