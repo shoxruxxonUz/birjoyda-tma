@@ -148,6 +148,7 @@ export default function App() {
     const [cart, setCart] = useState([]);
     const [activeOrders, setActiveOrders] = useState([]);
     const [selectedStore, setSelectedStore] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState(null);
     const [orderTab, setOrderTab] = useState('active');
     const [trackingOrder, setTrackingOrder] = useState(null);
     
@@ -207,7 +208,7 @@ export default function App() {
 
     // Подписка на заказы пользователя
     useEffect(() => {
-        if (!user || user.id === 'local_dev' || !db) return;
+        if (!user || !db) return;
         
         const q = query(
             collection(db, 'artifacts', appId, 'public', 'data', 'orders'),
@@ -238,9 +239,11 @@ export default function App() {
         if (tg?.LocationManager) {
             tg.LocationManager.init(() => {
                 tg.LocationManager.getLocation((loc) => {
-                    if (loc) {
+                    if (loc && loc.latitude) {
                         setUserLocation(loc);
                         setUserAddress(`Координаты: ${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`);
+                    } else {
+                        alert("Не удалось получить геопозицию из Telegram. Пожалуйста, укажите адрес вручную.");
                     }
                 });
             });
@@ -248,7 +251,11 @@ export default function App() {
             navigator.geolocation.getCurrentPosition((pos) => {
                 setUserLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
                 setUserAddress(`Локация: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+            }, (err) => {
+                alert("Доступ к геопозиции отклонен бразуером. Введите адрес текстом.");
             });
+        } else {
+            alert("Ваше устройство не поддерживает геолокацию.");
         }
     };
 
@@ -335,9 +342,9 @@ export default function App() {
                         <h3 className="font-bold text-lg mb-4">{t.categories}</h3>
                         <div className="flex gap-3 overflow-x-auto no-scrollbar mb-8 pb-2">
                             {CATEGORIES.map(c => (
-                                <div key={c.id} className="flex flex-col items-center gap-2 min-w-[70px]">
-                                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm border border-gray-100">{c.emoji}</div>
-                                    <span className="text-xs font-semibold">{c.name}</span>
+                                <div key={c.id} onClick={() => setSelectedCategory(selectedCategory === c.name ? null : c.name)} className={`flex flex-col items-center gap-2 min-w-[70px] cursor-pointer transition-all ${selectedCategory === c.name ? 'scale-110' : 'opacity-80'}`}>
+                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl shadow-sm border ${selectedCategory === c.name ? 'bg-[#FCE000] border-yellow-400' : 'bg-white border-gray-100'}`}>{c.emoji}</div>
+                                    <span className={`text-xs font-semibold ${selectedCategory === c.name ? 'text-black' : 'text-gray-500'}`}>{c.name}</span>
                                 </div>
                             ))}
                         </div>
@@ -345,7 +352,7 @@ export default function App() {
                         {/* Stores Grid 2 Columns */}
                         <h3 className="font-bold text-lg mb-4">{t.stores}</h3>
                         <div className="grid grid-cols-2 gap-4">
-                            {DEFAULT_STORES.map(s => (
+                            {DEFAULT_STORES.filter(s => !selectedCategory || s.categories.includes(selectedCategory)).map(s => (
                                 <div key={s.id} onClick={() => { setSelectedStore(s); setCurrentScreen('customer-store'); }} className="bg-white rounded-[24px] overflow-hidden shadow-sm active:scale-95 transition-transform">
                                     <div className="relative h-28 bg-gray-100">
                                         <img src={s.image} className="w-full h-full object-cover" />
