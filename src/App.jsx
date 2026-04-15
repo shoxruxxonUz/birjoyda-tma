@@ -274,12 +274,17 @@ export default function App() {
     const placeOrder = async () => {
         if (cart.length === 0) return;
         
+        // Перепроверяем данные пользователя на момент заказа 
+        const currentUser = tg?.initDataUnsafe?.user || user;
+        const finalUserId = String(currentUser.id || 'local_dev');
+        const finalUserName = currentUser.first_name || currentUser.username || 'Гость';
+
         const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         const storeNames = [...new Set(cart.map(i => i.storeName))].join(', ');
         
         const orderData = {
-            customerId: String(user.id),
-            customerName: user.first_name || user.username || 'Клиент',
+            customerId: finalUserId,
+            customerName: finalUserName,
             phone: userPhone,
             address: userAddress,
             location: userLocation,
@@ -489,7 +494,16 @@ export default function App() {
                         <div className="bg-white p-5 rounded-2xl shadow-sm">
                             <h3 className="font-bold mb-4 flex items-center gap-2"><User size={18} className="text-[#FCE000]"/> Контакты</h3>
                             <input value={user.first_name || ''} readOnly className="w-full bg-gray-50 p-3 rounded-xl mb-3 text-sm font-medium outline-none text-gray-500" />
-                            <input type="tel" placeholder={t.phone} value={userPhone} onChange={(e) => setUserPhone(e.target.value)} className="w-full bg-gray-50 border border-gray-100 p-3 rounded-xl text-sm font-medium outline-none focus:border-[#FCE000]" />
+                            <input 
+                                type="tel" 
+                                placeholder={t.phone} 
+                                value={userPhone} 
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/[^\d+() -]/g, '');
+                                    setUserPhone(val);
+                                }} 
+                                className="w-full bg-gray-50 border border-gray-100 p-3 rounded-xl text-sm font-medium outline-none focus:border-[#FCE000]" 
+                            />
                         </div>
 
                         {/* Адрес */}
@@ -517,7 +531,7 @@ export default function App() {
                     </div>
 
                     <div className="fixed bottom-0 left-0 right-0 p-5 bg-white border-t border-gray-100 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
-                        <Button onClick={placeOrder} disabled={!userAddress || !userPhone}>{t.submitOrder} - {(cart.reduce((s, i) => s + i.price * i.quantity, 0)).toLocaleString()} сум</Button>
+                        <Button onClick={placeOrder} disabled={!userAddress || userPhone.length < 7}>{t.submitOrder} - {(cart.reduce((s, i) => s + i.price * i.quantity, 0)).toLocaleString()} сум</Button>
                     </div>
                 </div>
             )}

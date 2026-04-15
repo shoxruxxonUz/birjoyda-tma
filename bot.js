@@ -91,6 +91,12 @@ onSnapshot(
                 try {
                     // В MVP отправляем заказ боту (если ADMIN_CHAT_ID валиден, то ему)
                     await bot.telegram.sendMessage(ADMIN_CHAT_ID, text, { parse_mode: 'Markdown' });
+                    
+                    // Если есть координаты, отправляем локацию на карте (как просил заказчик)
+                    if (order.location && order.location.latitude) {
+                        await bot.telegram.sendLocation(ADMIN_CHAT_ID, order.location.latitude, order.location.longitude);
+                    }
+                    
                     console.log("Новый заказ пришел:", order);
                 } catch (e) {
                     console.error("Ошибка при отправке уведомления:", e);
