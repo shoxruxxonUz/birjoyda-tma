@@ -9,7 +9,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import {
     getFirestore, collection, doc, setDoc, onSnapshot,
-    updateDoc, query, where, addDoc, getDocs
+    updateDoc, query, where, addDoc, getDocs, getDoc
 } from 'firebase/firestore';
 
 // --- Инициализация Firebase ---
@@ -145,8 +145,29 @@ const Button = ({ children, onClick, variant = 'primary', className = '', disabl
 };
 
 export default function App() {
+    // Генерация/Получение уникального ID браузера
+    const getDeviceId = () => {
+        let did = localStorage.getItem('deviceId');
+        if (!did) {
+            did = 'browser_' + Math.random().toString(36).substring(2, 11);
+            localStorage.setItem('deviceId', did);
+        }
+        return did;
+    };
+
     const [lang, setLang] = useState('ru');
-    const [user, setUser] = useState({ id: 'local_dev', first_name: 'Гость', username: 'guest' });
+    const [user, setUser] = useState(() => {
+        const tgUser = tg?.initDataUnsafe?.user;
+        if (tgUser) return tgUser;
+        
+        // Вне телеграма используем deviceId
+        const savedName = localStorage.getItem('savedUserName') || '';
+        return { id: getDeviceId(), first_name: savedName, username: 'браузер' };
+    });
+    
+    // Возможность редактировать имя (если зашел через браузер)
+    const [editableName, setEditableName] = useState(user.first_name);
+
     const [currentScreen, setCurrentScreen] = useState('customer-home');
     const [cart, setCart] = useState([]);
     const [activeOrders, setActiveOrders] = useState([]);
@@ -173,11 +194,6 @@ export default function App() {
             const params = new URLSearchParams(window.location.search);
             const tgLang = params.get('lang') || tg.initDataUnsafe?.user?.language_code;
             if (tgLang === 'uz' || tgLang === 'ru') setLang(tgLang);
-
-            // Получаем пользователя
-            if (tg.initDataUnsafe?.user) {
-                setUser(tg.initDataUnsafe.user);
-            }
         }
     }, []);
 
@@ -209,20 +225,37 @@ export default function App() {
         }
     }, [currentScreen, cart, lang]);
 
-    // Подписка на заказы пользователя
+    // Подписка на заказы пользователя и подгрузка профиля
     useEffect(() => {
         if (!user || !db || !auth) return;
         
         let unsubFirestore;
-        const unsubAuth = onAuthStateChanged(auth, (authUser) => {
+        const unsubAuth = onAuthStateChanged(auth, async (authUser) => {
             if (authUser) {
+                // Подгружаем сохраненный профиль пользователя
+                try {
+                    const uDoc = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', String(user.id)));
+                    if (uDoc.exists()) {
+                        const profile = uDoc.data();
+                        setUserPhone(prev => prev || profile.phone || '');
+                        setUserAddress(prev => prev || profile.address || '');
+                        if (profile.location && !userLocation) setUserLocation(profile.location);
+                        if (profile.name && !editableName && !tg?.initDataUnsafe?.user) {
+                             setEditableName(profile.name);
+                             setUser(prev => ({ ...prev, first_name: profile.name }));
+                        }
+                    }
+                } catch (e) {
+                    console.error("Ошибка при получении профиля", e);
+                }
+
                 const q = query(
                     collection(db, 'artifacts', appId, 'public', 'data', 'orders'),
                     where('customerId', '==', String(user.id))
                 );
                 
                 unsubFirestore = onSnapshot(q, (snapshot) => {
-                    setActiveOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                    setActiveOrders(snapshot.docs.map(oDoc => ({ id: oDoc.id, ...oDoc.data() })));
                 });
             }
         });
@@ -276,8 +309,14 @@ export default function App() {
         
         // Перепроверяем данные пользователя на момент заказа 
         const currentUser = tg?.initDataUnsafe?.user || user;
-        const finalUserId = String(currentUser.id || 'local_dev');
-        const finalUserName = currentUser.first_name || currentUser.username || 'Гость';
+        const finalUserId = String(currentUser.id || getDeviceId());
+        const finalUserName = currentUser.first_name || editableName || 'Без имени';
+
+        // Сохраняем имя локально если введено вручную
+        if (!tg?.initDataUnsafe?.user) {
+            localStorage.setItem('savedUserName', finalUserName);
+            setUser(prev => ({ ...prev, first_name: finalUserName }));
+        }
 
         const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         const storeNames = [...new Set(cart.map(i => i.storeName))].join(', ');
@@ -298,8 +337,19 @@ export default function App() {
         
         if (db) {
             try {
+                // Создаем заказ
                 const docRef = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'orders'), orderData);
                 setTrackingOrder({ id: docRef.id, ...orderData });
+                
+                // Сохраняем/Обновляем профиль (авто-регистрация)
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users', finalUserId), {
+                    phone: userPhone,
+                    address: userAddress,
+                    location: userLocation,
+                    name: finalUserName,
+                    lastUpdated: Date.now()
+                }, { merge: true });
+                
             } catch (e) {
                 console.error(e);
             }
@@ -493,7 +543,13 @@ export default function App() {
                         {/* Контакты */}
                         <div className="bg-white p-5 rounded-2xl shadow-sm">
                             <h3 className="font-bold mb-4 flex items-center gap-2"><User size={18} className="text-[#FCE000]"/> Контакты</h3>
-                            <input value={user.first_name || ''} readOnly className="w-full bg-gray-50 p-3 rounded-xl mb-3 text-sm font-medium outline-none text-gray-500" />
+                            <input 
+                                placeholder="Ваше Имя" 
+                                value={editableName} 
+                                onChange={(e) => setEditableName(e.target.value)} 
+                                readOnly={!!tg?.initDataUnsafe?.user} 
+                                className={`w-full bg-gray-50 p-3 rounded-xl mb-3 text-sm font-medium outline-none ${!!tg?.initDataUnsafe?.user ? 'text-gray-500' : 'focus:border-[#FCE000] border border-gray-100'}`} 
+                            />
                             <input 
                                 type="tel" 
                                 placeholder={t.phone} 
