@@ -6,7 +6,7 @@ import {
     Bell, Map as MapIcon, Phone, Check, CreditCard, Heart, MapPinned
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import {
     getFirestore, collection, doc, setDoc, onSnapshot,
     updateDoc, query, where, addDoc, getDocs
@@ -211,17 +211,26 @@ export default function App() {
 
     // Подписка на заказы пользователя
     useEffect(() => {
-        if (!user || !db) return;
+        if (!user || !db || !auth) return;
         
-        const q = query(
-            collection(db, 'artifacts', appId, 'public', 'data', 'orders'),
-            where('customerId', '==', String(user.id))
-        );
-        
-        const unsub = onSnapshot(q, (snapshot) => {
-            setActiveOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        let unsubFirestore;
+        const unsubAuth = onAuthStateChanged(auth, (authUser) => {
+            if (authUser) {
+                const q = query(
+                    collection(db, 'artifacts', appId, 'public', 'data', 'orders'),
+                    where('customerId', '==', String(user.id))
+                );
+                
+                unsubFirestore = onSnapshot(q, (snapshot) => {
+                    setActiveOrders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+                });
+            }
         });
-        return () => unsub();
+        
+        return () => {
+            unsubAuth();
+            if (unsubFirestore) unsubFirestore();
+        };
     }, [user]);
 
     const addToCart = (p) => {

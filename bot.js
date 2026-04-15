@@ -21,7 +21,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
-signInAnonymously(auth).catch(console.error);
+await signInAnonymously(auth).catch(console.error);
 const appId = 'delivery-app-v6';
 
 const bot = new Telegraf(TOKEN);
